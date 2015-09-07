@@ -11,7 +11,8 @@ class coolsms
 {
 	private $api_key;
 	private	$api_secret;
-	private $host = "http://api.coolsms.co.kr/sms";
+	private $host = "http://api.coolsms.co.kr/";
+	private $resource;
 	private $version = "1.5";
 	private $sdk_version = "1.1";
 	private $path;
@@ -41,9 +42,9 @@ class coolsms
 		$ch = curl_init(); 
 		// 1 = POST , 0 = GET
 		if($this->method==1)
-			$host = sprintf("%s/%s/%s", $this->host, $this->version, $this->path);
+			$host = sprintf("%s%s/%s/%s", $this->host, $this->resource, $this->version, $this->path);
 		elseif($this->method==0)
-			$host = sprintf("%s/%s/%s?%s", $this->host, $this->version, $this->path, $this->content);
+			$host = sprintf("%s%s/%s/%s?%s", $this->host, $this->resource, $this->version, $this->path, $this->content);
 
 		curl_setopt($ch, CURLOPT_URL, $host);
 		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE); 
@@ -110,22 +111,24 @@ class coolsms
 		else
 			$options->api_key = $this->api_key;
 		$options->signature = $this->getSignature();
-		print_r($options);
-
 		$this->setContent($options);
 		$this->curlProcess();
 	}
 
 	/**
+	 * $resource
+	 * 'sms', 'senderid'
 	 * $method 
 	 * GET = 0, POST, 1
 	 * $path
 	 * 'send' 'sent' 'cancel' 'balance' 
 	 */
-	private function setMethod($path, $method)
+	private function setMethod($resource, $path, $method, $version="1.5")
 	{
+		$this->resource = $resource;
 		$this->path = $path;
 		$this->method = $method;
+		$this->version = $version;
 	}
 
 	private function getResult()
@@ -141,7 +144,7 @@ class coolsms
 	 */
 	public function send($options) 
 	{
-		$this->setMethod('send', 1);
+		$this->setMethod('sms', 'send', 1);
 		$this->addInfos($options);	
 		return $this->getResult();
 	}
@@ -156,7 +159,7 @@ class coolsms
 	{
 		if(!$options)
 			$options = new stdClass();
-		$this->setMethod('sent', 0);
+		$this->setMethod('sms', 'sent', 0);
 		$this->addInfos($options);	
 		return $this->getResult();
 	}
@@ -168,12 +171,11 @@ class coolsms
 	 */
 	public function cancel($options) 
 	{
-		$this->setMethod('cancel', 1);
+		$this->setMethod('sms', 'cancel', 1);
 		$this->addInfos($options);	
 		return $this->getResult();
 	}
 
-	
 	/**
 	 * 	@GET balance method
 	 * 	@options must contain api_key, salt, signature
@@ -181,7 +183,7 @@ class coolsms
 	 */
 	public function balance() 
 	{
-		$this->setMethod('balance', 0);
+		$this->setMethod('sms', 'balance', 0);
 		$this->addInfos($options = new stdClass());	
 		return $this->getResult();
 	}
@@ -194,11 +196,83 @@ class coolsms
 	 */
 	public function status($options) 
 	{
-		$this->setMethod('status', 0);
+		$this->setMethod('sms', 'status', 0);
 		$this->addInfos($options);	
 		return $this->getResult();
 	}
 
+	/**
+	 * @POST register method
+	 * @options must contains api_key, salt, signature, phone, site_user(optional)
+	 * @return json object(handle_key, ars_number)
+	 */
+	public function register($options)
+	{
+		$this->setMethod('senderid', 'register', 1, "1.1");
+		$this->addInfos($options);
+		return $this->getResult();
+	}
+
+	/**
+	 * @POST verify method
+	 * @options must contains api_key, salt, signature, handle_key
+	 * return nothing
+	 */
+	public function verify($options)
+	{
+		$this->setMethod('senderid', 'verify', 1, "1.1");
+		$this->addInfos($options);
+		return $this->getResult();
+	}
+
+	/**
+	 * POST delete method
+	 * $options must contains api_key, salt, signature, handle_key
+	 * return nothing
+	 */
+	public function delete($options)
+	{
+		$this->setMethod('senderid', 'delete', 1, "1.1");
+		$this->addInfos($options);
+		return $this->getResult();
+	}
+
+	/**
+	 * GET list method
+	 * $options must conatins api_key, salt, signature, site_user(optional)
+	 * return json object(idno, phone_number, flag_default, updatetime, regdate)
+	 */
+	public function get_senderid_list($options)
+	{
+		$this->setMethod('senderid', 'list', 0, "1.1");
+		$this->addInfos($options);
+		return $this->getResult();
+	}
+
+	/**
+	 * POST set_default
+	 * $options must contains api_key, salt, signature, handle_key, site_user(optional)
+	 * return nothing
+	 */
+	public function set_default($options)
+	{
+		$this->setMethod('senderid', 'set_default', 1, "1.1");
+		$this->addInfos($options);
+		return $this->getResult();
+	}
+
+	/**
+	 * GET get_default
+	 * $options must conatins api_key, salt, signature, site_user(optional)
+	 * return json object(handle_key, phone_number)
+	 */
+	public function get_default($options)
+	{
+		$this->setMethod('senderid', 'get_default', 0, "1.1");
+		$this->addInfos($options);
+		return $this->getResult();
+	}
+	
 	private function objectToArray($d) {
 		if (is_object($d)) {
 			// Gets the properties of the given object
